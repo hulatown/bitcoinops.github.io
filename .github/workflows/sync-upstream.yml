@@ -1,0 +1,46 @@
+name: Sync Upstream and Check for New Newsletters
+
+on:
+  schedule:
+    - cron: '0 16 * * *' 
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+
+      - name: Add upstream and fetch
+        run: |
+          git remote add upstream https://github.com/bitcoinops/bitcoinops.github.io.git
+          git fetch upstream
+          git checkout master
+          git merge upstream/master --no-commit --no-ff || echo "No changes"
+
+      - name: Check for new newsletters
+        id: check
+        run: |
+          git diff --name-only HEAD | grep "^_posts/en/newsletters/.*\.md$" > changed.txt || true
+          if [ -s changed.txt ]; then
+            echo "found=true" >> $GITHUB_OUTPUT
+            echo "changed=$(cat changed.txt | paste -sd "," -)" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Save changed file list
+        if: steps.check.outputs.found == 'true'
+        run: |
+          mkdir -p .ghcache
+          cp changed.txt .ghcache/
+
+      - name: Trigger downstream workflow
+        if: steps.check.outputs.found == 'true'
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: translate-and-pr.yml
+          token: ${{ secrets.GITHUB_TOKEN }}

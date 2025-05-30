@@ -1,0 +1,22 @@
+name: Build Check
+
+on:
+  pull_request:
+    branches: ["newsletter*d1"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y optipng
+      - name: Setup Ruby and Bundler
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 2.6.4
+          bundler-cache: true
+      - name: Run production build
+        env:
+          NOKOGIRI_USE_SYSTEM_LIBRARIES: true
+        run: make production
