@@ -29,8 +29,7 @@ jobs:
       - name: Translate files
         run: |
           IFS=$'\n'
-          for file in $(cat .ghcache/changed.txt); do
-            content=$(awk 'BEGIN{print "Translate this file into Chinese, keeping the original markdown format. And can take other files as format references.
+          prompt='Translate this file into Chinese, keeping the original markdown format. And can take other files as format references.
 Here is a common professional vocabulary correspondence table (English -> Chinese):
   * anchor outputs -> 锚点输出
   * Bitcoin -> 比特币
@@ -60,7 +59,10 @@ Here is a common professional vocabulary correspondence table (English -> Chines
   * transaction pinning attacks -> 交易钉死攻击
   * withdrawal -> 取款
   * zero conf -> 零确认
-  * gossip -> gossip"} {print}' "$file" | jq -Rs .)
+  * gossip -> gossip'
+          
+          for file in $(cat .ghcache/changed.txt); do
+            content=$(awk -v p="$prompt" 'BEGIN{print p} {print}' "$file" | jq -Rs .)
             body='{"model":"gpt-4","messages":[{"role":"system","content":"你是一个技术文档翻译器，保留markdown结构和YAML frontmatter格式。"},{"role":"user","content":'"$content"'}]}'
             response=$(curl -s https://api.openai.com/v1/chat/completions \
               -H "Content-Type: application/json" \
